@@ -1,5 +1,4 @@
 require 'teamspeak-ruby'
-require 'timeout'
 
 begin
     $ts = Teamspeak::Client.new 'IP', PORT
