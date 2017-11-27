@@ -5,21 +5,24 @@ SG_ID = {guest: 2480686, member: 2480685, operator: 2534677, admin: 2480684}
 # AFK-Time threshold for members to be kicked
 AFK_TIME = 30 # AFK time in min
 
+IP = ''
+PW = ''
+
 $ts = ''
 $sleep_time = 120 # 2 min initial value
 
 # 'slots_available'    
 def slots_available
-    #begin
+    begin
         serverinfo = $ts.command('serverinfo')
         res_slots = serverinfo['virtualserver_reserved_slots']
         max_clients = serverinfo['virtualserver_maxclients']
         clients_online = serverinfo['virtualserver_clientsonline']
         max_clients - (res_slots + clients_online)
-    #rescue
-        #puts '[ERROR] problem getting available slots'
-        #raise 'slots_available'
-    #end
+    rescue
+        puts '[ERROR] problem getting available slots'
+        raise 'slots_available'
+    end
 end
 
 # 'servererror'
@@ -110,8 +113,8 @@ def run
 
     # INIT 
     begin
-        $ts = Teamspeak::Client.new 'IP', 10011
-        $ts.login('autokickbot', 'PASSWORT')
+        $ts = Teamspeak::Client.new IP, 10011
+        $ts.login('autokickbot', PW)
         $ts.command('use', port: 10045)
         puts 'Connection successful!'
     rescue
@@ -137,11 +140,20 @@ def run
         puts 'next check in ' + ($sleep_time / 60.0).to_s + 'min.'
         
         #for stopping loop
-        ready_fds = select [ $stdin ], [], [], $sleep_time
-        s = ready_fds.first.first.gets unless ready_fds.nil?
-        if s != nil
-            #$ts.disconnect
-            raise 'exit' if s.chomp == 'exit'
+        for t in 1..$sleep_time
+            ready_fds = select [ $stdin ], [], [], 60
+            s = ready_fds.first.first.gets unless ready_fds.nil?
+            if s != nil
+                #$ts.disconnect
+                raise 'exit' if s.chomp == 'exit'
+            end
+            
+            begin
+                $ts.command('whoami')
+                puts 'still alive...'
+            rescue
+                puts 'dead'
+            end
         end
         puts ''
     end
@@ -185,6 +197,10 @@ loop do
         sleep 60*5
     end
     sleep 60
+    begin
+        $ts.disconnect
+    rescue
+    end
 end
 
 puts '-----------'
