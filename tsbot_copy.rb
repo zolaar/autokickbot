@@ -50,8 +50,12 @@ def kick
         if max_idle[1] >= 1000*60*AFK_TIME # min -> ms
             msg = 'Server ist voll! Du warst seit ca. ' + (max_idle[1] / 1000 / 60).to_s + 'min inaktiv und wurdest deshalb gekickt.'
             $ts.command('clientkick', clid: max_idle[0], reasonid: 5, reasonmsg: msg)
-            puts 'kicking ' + clid_nick[max_idle[0]] + '.'
+            puts '[' + Time.now.to_s + ']kicking ' + clid_nick[max_idle[0]] + '.'
             puts 'Reason: Idling for ' + (max_idle[1] / 1000 / 60).to_s + 'min.'
+            
+            File.open('kicklog.txt', 'a'){|f|
+                f.puts('[' + Time.now.to_s + '] kicking ' + clid_nick[max_idle[0]] + ' | idle time: ' + (max_idle[1] / 1000 / 60).to_s + 'min)')
+            } 
             
         # kicking guests
         else
@@ -65,8 +69,12 @@ def kick
             msg = 'Server ist voll! Plätze werden für Member freigegeben. (idle time: ' + (max_idle[1] / 1000 / 60).to_s + 'min)'
             max_idle = clid_idle_guest.max_by{|k,v| v} # kicking guest with highest idle time
             $ts.command('clientkick', clid: max_idle[0], reasonid: 5, reasonmsg: msg)
-            puts 'kicking ' + clid_nick[max_idle[0]] + '.' 
+            puts '[' + Time.now.to_s + '] kicking ' + clid_nick[max_idle[0]] + '.' 
             puts 'Reason: GUEST. (idle time: ' + (max_idle[1] / 1000 / 60).to_s + 'min)'
+            
+            File.open('kicklog.txt', 'a'){|f|
+                f.puts('[' + Time.now.to_s + '] kicking ' + clid_nick[max_idle[0]] + ' | idle time: ' + (max_idle[1] / 1000 / 60).to_s + 'min)')
+            }            
         end
     rescue Teamspeak::ServerError => e
         puts '[ERROR] ServerError:'
@@ -140,22 +148,23 @@ def run
         puts 'next check in ' + ($sleep_time / 60.0).to_s + 'min.'
         
         #for stopping loop
-        for t in 1..$sleep_time
-            ready_fds = select [ $stdin ], [], [], 60
+        for t in 1..($sleep_time / 30)
+            ready_fds = select [ $stdin ], [], [], 30
             s = ready_fds.first.first.gets unless ready_fds.nil?
             if s != nil
                 #$ts.disconnect
                 raise 'exit' if s.chomp == 'exit'
+                break if s == "\n"   
             end
             
             begin
                 $ts.command('whoami')
-                puts 'still alive...'
+                print '.'
             rescue
-                puts 'dead'
+                print 'x'
             end
         end
-        puts ''
+        puts
     end
 end
 
