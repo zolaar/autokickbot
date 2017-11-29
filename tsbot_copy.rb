@@ -7,6 +7,7 @@ AFK_TIME = 30 # AFK time in min
 
 IP = ''
 PW = ''
+LOGIN = ''
 
 $ts = ''
 $sleep_time = 120 # 2 min initial value
@@ -102,10 +103,10 @@ def check
     
     puts 'refreshing sleep time...' # sleep_time == free_slots * min
     $sleep_time = 60*(slots)
-    if $sleep_time <= 60
-        $sleep_time = 30
-    elsif $sleep_time >= 1440
-        $sleep_time = 60*60
+    if $sleep_time <= 60 # only 1 slot left
+        $sleep_time = 30 # check every 30 s
+    elsif $sleep_time >= 60*22 # only bot on TS
+        $sleep_time = 60*45 # next check in 45 min
     end
     puts 'new sleep time: ' + $sleep_time.to_s + 's'
 end
@@ -122,7 +123,7 @@ def run
     # INIT 
     begin
         $ts = Teamspeak::Client.new IP, 10011
-        $ts.login('autokickbot', PW)
+        $ts.login(LOGIN, PW)
         $ts.command('use', port: 10045)
         puts 'Connection successful!'
     rescue
@@ -157,11 +158,21 @@ def run
                 break if s == "\n"   
             end
             
-            begin
-                $ts.command('whoami')
-                print '.'
-            rescue
-                print 'x'
+            if t%2 == 0 # once every minute
+                begin
+                    $ts.command('whoami')
+                    print '.'
+                rescue
+                    begin
+                        ts.disconnect
+                        ts.login(LOGIN, PW)
+                        bot_id = $ts.command('clientgetids', cluid: 'oszwEVqrBO1dCX89xIK95x6bHXE=')
+                        $ts.command('clientupdate', clid: bot_id['clid'], client_nickname: 'Igor der Adminbot')
+                        print 'o'
+                    rescue
+                        print 'x'
+                    end
+                end
             end
         end
         puts
