@@ -199,8 +199,9 @@ loop do
         puts 'RESTART!'
     when 'use'
         puts '[ERROR] Server INIT failed!'
-        puts 'SHUTDOWN!'
-        break
+        puts 'RESTART in 10min'
+        # puts 'SHUTDOWN!'
+        # break
     when 'clientupdate'
         puts '[ERROR] INIT failed!'
         puts 'RESTART!'
