@@ -207,8 +207,9 @@ loop do
         puts 'RESTART!'
     when 'use'
         puts '[ERROR] Server INIT failed!'
-        puts 'SHUTDOWN!'
-        break
+        puts 'RESTART in 10min'
+        # puts 'SHUTDOWN!'
+        # break
     when 'clientupdate'
         puts '[ERROR] INIT failed!'
         puts 'RESTART!'
@@ -252,3 +253,62 @@ end
 puts '-----------'
 puts 'EXIT'
 puts '-----------'   
+<<<<<<< HEAD
+=======
+
+# serverinfo = $ts.command('serverinfo')
+# res_slots = serverinfo['virtualserver_reserved_slots']
+# max_clients = serverinfo['virtualserver_maxclients']
+# clients_online = serverinfo['virtualserver_clientsonline']
+# slots_available = max_clients - (res_slots + clients_online)
+
+
+# puts 'clientlist'
+# $ts.command('clientlist').each do |user|
+  # puts user #$ts.command('clientinfo', clid: user['clid'])['client_idle_time']
+  # print '===== '
+  # puts $ts.command('clientinfo', clid: user['clid'])
+  # sleep 2
+# end
+
+# puts '#####################################'
+
+# $ts.command('clientlist').each do |user|
+  # puts user #$ts.command('clientinfo', clid: user['clid'])['client_idle_time']
+  # print '===== '
+  # puts $ts.command('clientinfo', clid: user['clid'])['client_servergroups']
+  # sleep 2
+# end
+
+# #####################################
+# {"clid"=>4, "cid"=>8183626, "client_database_id"=>34663189, "client_nickname"=>"
+# Happens", "client_type"=>0}
+# ===== 2480686 -> Guest
+# {"clid"=>5, "cid"=>8160605, "client_database_id"=>29232480, "client_nickname"=>"
+# Thunaer", "client_type"=>0}
+# ===== 2480684 -> Admin
+# {"clid"=>8, "cid"=>8183635, "client_database_id"=>30772024, "client_nickname"=>"
+# zolar", "client_type"=>0}
+# ===== 2480684,2534677 -> Admin, Operator
+# {"clid"=>13, "cid"=>9088092, "client_database_id"=>31019769, "client_nickname"=>
+# "aaron", "client_type"=>0, "error"=>nil, "id"=>0, "msg"=>"ok"}
+# ===== 2480685 -> Member
+# ----------------------
+
+
+#puts ts.command('clientlist')
+
+#{"clid"=>27, "cid"=>8160605, "client_database_id"=>30772024, "client_nickname"=>"zolar", "client_type"=>0}
+
+
+#sleep(10000)
+
+#TEST
+# ts.command('clientlist').each do |user|
+    # if user['client_nickname'] == 'zolar'
+        # ts.command('clientpoke', clid: user['clid'], msg: 'TESTPOKE')
+    # end
+# end
+
+# puts ts.command('hostinfo')['host_timestamp_utc']
+>>>>>>> c5471aabce13bd573334fd2b9771da95b658eba3
