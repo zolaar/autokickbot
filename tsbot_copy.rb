@@ -30,28 +30,38 @@ end
 # 'kick'
 def kick
     begin
-        clientlist = $ts.command('clientlist')
-        clid_sg = {}
-        clid_idle = {}
-        clid_nick = {}
-        clientlist.each do |user|
-            # client ID => server group 
-            clid_sg[user['clid']] = $ts.command('clientinfo', clid: user['clid'])['client_servergroups'] 
-            sleep 0.5 # avoid flood ban 
-            if clid_sg[user['clid']] != SG_ID[:admin] # no kick for admins
-                # client ID => idle time
-                clid_idle[user['clid']] = $ts.command('clientinfo', clid: user['clid'])['client_idle_time']
-            end
+        # getting neccessary info about clients
+        clientlist_sg = $ts.command('clientlist',{},'-groups')
+        clientlist_idle = $ts.command('clientlist',{},'-times')
+        
+        clid_idle = {} # clid => client_idle_time
+        clid_nick = {} # clid => client_nickname
+        clid_kickable = {} # w/o admins: clid => client_idle_time
+        clid_kickable_guests = {} # only guests: clid => client_idle_time
+        
+        clientlist_idle.each do |user|
+            clid_idle[user['clid']] = user['client_idle_time']
             clid_nick[user['clid']] = user['client_nickname']
-            sleep 0.5 # avoid flood ban 
+        end
+        
+        clientlist_sg.each do |user|
+            if user['client_servergroups'] != SG_ID[:admin]
+                clid_kickable[user['clid']] = clid_idle[user['clid']]
+                
+                if user['client_servergroups'] == SG_ID[:guest] #if guest
+                    clid_kickable_guests[user['clid']] = clid_idle[user['clid']]
+                end
+            end
         end
         
         # kicking client with highest idle value > 30 min
-        max_idle = clid_idle.max_by{|k,v| v}
+        max_idle = clid_kickable.max_by{|k,v| v}
         if max_idle[1] >= 1000*60*AFK_TIME # min -> ms
             msg = 'Server ist voll! Du warst seit ca. ' + (max_idle[1] / 1000 / 60).to_s + 'min inaktiv und wurdest deshalb gekickt.'
             $ts.command('clientkick', clid: max_idle[0], reasonid: 5, reasonmsg: msg)
-            puts '[' + Time.now.to_s + ']kicking ' + clid_nick[max_idle[0]] + '.'
+            sleep 1.0
+            #puts '[59] sleeping 1s ...'
+            puts '[' + Time.now.to_s + '] kicking ' + clid_nick[max_idle[0]] + '.'
             puts 'Reason: Idling for ' + (max_idle[1] / 1000 / 60).to_s + 'min.'
             
             File.open('kicklog.txt', 'a'){|f|
@@ -60,23 +70,19 @@ def kick
             
         # kicking guests
         else
-            clid_idle_guest = {}
-            clientlist.each do |user|
-                if clid_sg[user['clid']] == SG_ID[:guest] # if guest
-                    clid_idle_guest[user['clid']] = $ts.command('clientinfo', clid: user['clid'])['client_idle_time']
-                end
-                sleep 0.5
-            end
             msg = 'Server ist voll! Plätze werden für Member freigegeben. (idle time: ' + (max_idle[1] / 1000 / 60).to_s + 'min)'
-            max_idle = clid_idle_guest.max_by{|k,v| v} # kicking guest with highest idle time
+            max_idle = clid_kickable_guests.max_by{|k,v| v} # kicking guest with highest idle time
             $ts.command('clientkick', clid: max_idle[0], reasonid: 5, reasonmsg: msg)
+            sleep 1.0
             puts '[' + Time.now.to_s + '] kicking ' + clid_nick[max_idle[0]] + '.' 
             puts 'Reason: GUEST. (idle time: ' + (max_idle[1] / 1000 / 60).to_s + 'min)'
             
             File.open('kicklog.txt', 'a'){|f|
-                f.puts('[' + Time.now.to_s + '] kicking ' + clid_nick[max_idle[0]] + ' | idle time: ' + (max_idle[1] / 1000 / 60).to_s + 'min)')
+                f.puts('[' + Time.now.to_s + '] kicking ' + clid_nick[max_idle[0]] + ' | idle time: ' + (max_idle[1] / 1000 / 60).to_s + 'min | GUEST')
             }            
+        
         end
+
     rescue Teamspeak::ServerError => e
         puts '[ERROR] ServerError:'
         puts e.message
@@ -91,7 +97,7 @@ end
 def check
     # get server information
     slots = slots_available
-    
+    sleep 1.0
     if slots < 1 #one slot should be free for member to join
         puts 'Server full! Kicking...'
         kick
@@ -105,8 +111,8 @@ def check
     $sleep_time = 60*(slots)
     if $sleep_time <= 60 # only 1 slot left
         $sleep_time = 30 # check every 30 s
-    elsif $sleep_time >= 60*22 # only bot on TS
-        $sleep_time = 60*45 # next check in 45 min
+    elsif $sleep_time >= 60*20 # only some users
+        $sleep_time *= 2 # double sleep time
     end
     puts 'new sleep time: ' + $sleep_time.to_s + 's'
 end
@@ -155,6 +161,7 @@ def run
             if s != nil
                 #$ts.disconnect
                 raise 'exit' if s.chomp == 'exit'
+                raise 'inspect' if s.chomp == 'inspect'
                 break if s == "\n"   
             end
             
@@ -163,6 +170,7 @@ def run
                     $ts.command('whoami')
                     print '.'
                 rescue
+                    sleep 5
                     begin
                         ts.disconnect
                         ts.login(LOGIN, PW)
@@ -211,12 +219,30 @@ loop do
         puts '[ERROR] Server Error!'
         puts 'RESTART in 10min!'
         sleep 60*10
+    when 'inspect'
+        puts 'INSPECTION'
+        clientlist_sg = $ts.command('clientlist',{},'-groups')
+        clientlist_idle = $ts.command('clientlist',{},'-times')
+        puts '---------------------------------'        
+        puts 'GROUPS'
+        puts '---------------------------------'
+        clientlist_sg.each do |user|
+            puts user.to_s
+            puts
+        end
+        puts '---------------------------------'
+        puts 'TIMES'
+        puts '---------------------------------'
+        clientlist_idle.each do |user|
+            puts user.to_s
+            puts
+        end
     else
         puts '[ERROR] Something went wrong!'
         puts 'RESTART in 5min!'
         sleep 60*5
     end
-    sleep 60
+    sleep 10
     begin
         $ts.disconnect
     rescue
@@ -226,59 +252,3 @@ end
 puts '-----------'
 puts 'EXIT'
 puts '-----------'   
-
-# serverinfo = $ts.command('serverinfo')
-# res_slots = serverinfo['virtualserver_reserved_slots']
-# max_clients = serverinfo['virtualserver_maxclients']
-# clients_online = serverinfo['virtualserver_clientsonline']
-# slots_available = max_clients - (res_slots + clients_online)
-
-
-# puts 'clientlist'
-# $ts.command('clientlist').each do |user|
-  # puts user #$ts.command('clientinfo', clid: user['clid'])['client_idle_time']
-  # print '===== '
-  # puts $ts.command('clientinfo', clid: user['clid'])
-  # sleep 2
-# end
-
-# puts '#####################################'
-
-# $ts.command('clientlist').each do |user|
-  # puts user #$ts.command('clientinfo', clid: user['clid'])['client_idle_time']
-  # print '===== '
-  # puts $ts.command('clientinfo', clid: user['clid'])['client_servergroups']
-  # sleep 2
-# end
-
-# #####################################
-# {"clid"=>4, "cid"=>8183626, "client_database_id"=>34663189, "client_nickname"=>"
-# Happens", "client_type"=>0}
-# ===== 2480686 -> Guest
-# {"clid"=>5, "cid"=>8160605, "client_database_id"=>29232480, "client_nickname"=>"
-# Thunaer", "client_type"=>0}
-# ===== 2480684 -> Admin
-# {"clid"=>8, "cid"=>8183635, "client_database_id"=>30772024, "client_nickname"=>"
-# zolar", "client_type"=>0}
-# ===== 2480684,2534677 -> Admin, Operator
-# {"clid"=>13, "cid"=>9088092, "client_database_id"=>31019769, "client_nickname"=>
-# "aaron", "client_type"=>0, "error"=>nil, "id"=>0, "msg"=>"ok"}
-# ===== 2480685 -> Member
-# ----------------------
-
-
-#puts ts.command('clientlist')
-
-#{"clid"=>27, "cid"=>8160605, "client_database_id"=>30772024, "client_nickname"=>"zolar", "client_type"=>0}
-
-
-#sleep(10000)
-
-#TEST
-# ts.command('clientlist').each do |user|
-    # if user['client_nickname'] == 'zolar'
-        # ts.command('clientpoke', clid: user['clid'], msg: 'TESTPOKE')
-    # end
-# end
-
-# puts ts.command('hostinfo')['host_timestamp_utc']
