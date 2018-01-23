@@ -11,7 +11,7 @@ LOGIN = ''
 NAME = 'Igor der Adminbot'
 
 $ts = ''
-# $sleep_time = 120 # 2 min initial value
+$sleep_time = 120 # 2 min initial value
 
 # 'slots_available'    
 def slots_available
@@ -106,16 +106,13 @@ def check
         puts slots.to_s+' slots available!'
     end
     
-#    slots = slots_available
-#    
-#    puts 'refreshing sleep time...' # sleep_time == free_slots * min
-#    $sleep_time = 60*(slots)
-#    if $sleep_time <= 60 # only 1 slot left
-#        $sleep_time = 30 # check every 30 s
-#    elsif $sleep_time >= 60*20 # only some users
-#        $sleep_time *= 2 # double sleep time
-#    end
-#    puts 'new sleep time: ' + $sleep_time.to_s + 's'
+    slots = slots_available
+    
+    puts 'refreshing sleep time...'
+    if slots <= 1 # only 1 slot left
+        $sleep_time = 30 # check every 30s
+    end
+    puts 'new sleep time: ' + $sleep_time.to_s + 's'
 end
 
 ###########
@@ -152,7 +149,7 @@ def run
     loop do
         puts 'running check...'
         check
-        sleep 60
+        sleep $sleep_time
         
 #        #$sleep_time = 60 #debug
 #        puts 'next check in ' + ($sleep_time / 60.0).to_s + 'min.'
